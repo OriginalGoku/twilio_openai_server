@@ -1,0 +1,32 @@
+{
+  "name": "caller-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/formbody": "^8",
+    "@fastify/websocket": "^11",
+    "@openai/agents": "latest",
+    "@openai/agents-extensions": "latest",
+    "dotenv": "^16",
+    "fastify": "^5",
+    "googleapis": "^140",
+    "openai": "^6",
+    "pino": "^9",
+    "twilio": "^5",
+    "ws": "^8.18.0",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "pino-pretty": "^11",
+    "tsx": "^4",
+    "typescript": "^5.5"
+  }
+}
