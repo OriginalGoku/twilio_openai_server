@@ -11,12 +11,16 @@ interface CreateAgentOptions {
   businessContext?: PromptOverrides;
 }
 
-export function createAgent(options?: CreateAgentOptions): RealtimeAgent {
-  const providerConfig = getActiveRealtimeProviderConfig();
+export function resolveAgentInstructions(options?: CreateAgentOptions): string {
   const prompt = buildPrompt({
     ...businessConfig,
     ...(options?.businessContext ?? {}),
   });
+  return options?.instructions ?? config.SYSTEM_PROMPT ?? prompt;
+}
+
+export function createAgent(options?: CreateAgentOptions): RealtimeAgent {
+  const providerConfig = getActiveRealtimeProviderConfig();
 
   if (providerConfig.provider !== "openai") {
     throw new Error(
@@ -27,7 +31,7 @@ export function createAgent(options?: CreateAgentOptions): RealtimeAgent {
   return new RealtimeAgent({
     name: "ClientAgent",
     model: providerConfig.model,
-    instructions: options?.instructions ?? config.SYSTEM_PROMPT ?? prompt,
+    instructions: resolveAgentInstructions(options),
     voice: providerConfig.voice,
     tools: agentTools,
   });

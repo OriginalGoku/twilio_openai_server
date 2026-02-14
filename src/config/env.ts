@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import { z } from "zod";
+import { getActiveRealtimeProviderConfig } from "./llm.js";
 
 dotenv.config();
 
@@ -45,6 +46,59 @@ const envSchema = z
     ENABLE_EMAIL_TOOLS: raw.ENABLE_EMAIL_TOOLS.toLowerCase() === "true",
   }))
   .superRefine((data, ctx) => {
+    const realtimeProvider = getActiveRealtimeProviderConfig().provider;
+    if (realtimeProvider === "openai" && !data.OPENAI_API_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["OPENAI_API_KEY"],
+        message: "OPENAI_API_KEY is required when active provider is openai",
+      });
+    }
+
+    if (realtimeProvider === "gemini" && !data.GEMINI_API_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["GEMINI_API_KEY"],
+        message: "GEMINI_API_KEY is required when active provider is gemini",
+      });
+    }
+
+    if (realtimeProvider === "elevenlabs" && !data.ELEVENLABS_API_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["ELEVENLABS_API_KEY"],
+        message:
+          "ELEVENLABS_API_KEY is required when active provider is elevenlabs",
+      });
+    }
+
+    if (realtimeProvider === "amazon_nova_sonic") {
+      if (!data.AWS_REGION) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["AWS_REGION"],
+          message:
+            "AWS_REGION is required when active provider is amazon_nova_sonic",
+        });
+      }
+      if (!data.AWS_ACCESS_KEY_ID) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["AWS_ACCESS_KEY_ID"],
+          message:
+            "AWS_ACCESS_KEY_ID is required when active provider is amazon_nova_sonic",
+        });
+      }
+      if (!data.AWS_SECRET_ACCESS_KEY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["AWS_SECRET_ACCESS_KEY"],
+          message:
+            "AWS_SECRET_ACCESS_KEY is required when active provider is amazon_nova_sonic",
+        });
+      }
+    }
+
     if (Number.isNaN(data.PORT) || data.PORT < 1 || data.PORT > 65535) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

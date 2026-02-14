@@ -204,44 +204,46 @@ export const mediaStreamRoutes: FastifyPluginAsync = async (fastify) => {
       );
 
       const transport = bridge.transport;
-      const originalOnAudio = (transport as any)._onAudio?.bind(transport);
-      if (typeof originalOnAudio === "function") {
-        (transport as any)._onAudio = (audioEvent: any): void => {
-          if (timingEnabled) {
-            const now = Date.now();
-            pendingOpenAiAudioEventTimesMs.push(now);
-            if (firstOpenAiAudioEventAtMs === null) {
-              firstOpenAiAudioEventAtMs = now;
+      if (transport) {
+        const originalOnAudio = (transport as any)._onAudio?.bind(transport);
+        if (typeof originalOnAudio === "function") {
+          (transport as any)._onAudio = (audioEvent: any): void => {
+            if (timingEnabled) {
+              const now = Date.now();
+              pendingOpenAiAudioEventTimesMs.push(now);
+              if (firstOpenAiAudioEventAtMs === null) {
+                firstOpenAiAudioEventAtMs = now;
+              }
             }
-          }
-          originalOnAudio(audioEvent);
-        };
-      }
-
-      const originalSendEvent = transport.sendEvent.bind(transport);
-      (transport as any).sendEvent = (event: any): void => {
-        if (timingEnabled && event?.type === "input_audio_buffer.append") {
-          const now = Date.now();
-          const receivedAt = pendingInboundMediaArrivalTimesMs.shift();
-          if (receivedAt) {
-            const forwardMs = now - receivedAt;
-            localBufferingSamples += 1;
-            localBufferingMsSum += forwardMs;
-            localBufferingMsMax = Math.max(localBufferingMsMax, forwardMs);
-            forwardToOpenAiSamples += 1;
-            forwardToOpenAiMsSum += forwardMs;
-            forwardToOpenAiMsMax = Math.max(forwardToOpenAiMsMax, forwardMs);
-            if (firstForwardToOpenAiAtMs === null) {
-              firstForwardToOpenAiAtMs = now;
-              logTiming("First audio frame forwarded to OpenAI", {
-                forward_to_openai_ms: forwardMs,
-              });
-            }
-          }
+            originalOnAudio(audioEvent);
+          };
         }
 
-        originalSendEvent(event);
-      };
+        const originalSendEvent = transport.sendEvent.bind(transport);
+        (transport as any).sendEvent = (event: any): void => {
+          if (timingEnabled && event?.type === "input_audio_buffer.append") {
+            const now = Date.now();
+            const receivedAt = pendingInboundMediaArrivalTimesMs.shift();
+            if (receivedAt) {
+              const forwardMs = now - receivedAt;
+              localBufferingSamples += 1;
+              localBufferingMsSum += forwardMs;
+              localBufferingMsMax = Math.max(localBufferingMsMax, forwardMs);
+              forwardToOpenAiSamples += 1;
+              forwardToOpenAiMsSum += forwardMs;
+              forwardToOpenAiMsMax = Math.max(forwardToOpenAiMsMax, forwardMs);
+              if (firstForwardToOpenAiAtMs === null) {
+                firstForwardToOpenAiAtMs = now;
+                logTiming("First audio frame forwarded to OpenAI", {
+                  forward_to_openai_ms: forwardMs,
+                });
+              }
+            }
+          }
+
+          originalSendEvent(event);
+        };
+      }
 
       const originalSocketSend = socket.send.bind(socket);
       (socket as any).send = (data: any, ...args: any[]): void => {
@@ -296,6 +298,16 @@ export const mediaStreamRoutes: FastifyPluginAsync = async (fastify) => {
       };
 
       const session = bridge.session;
+      session.on("provider_audio_chunk", () => {
+        if (!timingEnabled) {
+          return;
+        }
+        const now = Date.now();
+        pendingOpenAiAudioEventTimesMs.push(now);
+        if (firstOpenAiAudioEventAtMs === null) {
+          firstOpenAiAudioEventAtMs = now;
+        }
+      });
 
       const sendInitialGreetingIfReady = (): void => {
         if (!sessionConnected || !streamStarted || greetingSent) {
