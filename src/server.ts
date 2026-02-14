@@ -10,6 +10,7 @@ import websocket from "@fastify/websocket";
 import Fastify from "fastify";
 
 import { config } from "./config/env.js";
+import { getActiveRealtimeProviderConfig } from "./config/llm.js";
 import callRoutes from "./routes/call.routes.js";
 import healthRoutes from "./routes/health.routes.js";
 import twimlRoutes from "./routes/twiml.routes.js";
@@ -45,6 +46,7 @@ async function buildServer() {
 
 async function start() {
   const app = await buildServer();
+  const realtimeProvider = getActiveRealtimeProviderConfig();
 
   try {
     await app.listen({
@@ -53,7 +55,12 @@ async function start() {
     });
 
     logger.info(
-      { port: config.PORT, env: config.NODE_ENV },
+      {
+        port: config.PORT,
+        env: config.NODE_ENV,
+        realtimeProvider: realtimeProvider.provider,
+        realtimeModel: realtimeProvider.model,
+      },
       "Caller engine started",
     );
   } catch (error) {
