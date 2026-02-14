@@ -348,6 +348,10 @@ export const mediaStreamRoutes: FastifyPluginAsync = async (fastify) => {
       transcriptCollector.attachToSession(session as any);
 
       socket.on("message", (raw) => {
+        if (isFinalized) {
+          return;
+        }
+
         try {
           const parsed = JSON.parse(raw.toString());
           if (parsed?.event === "start" && parsed?.start) {
@@ -516,6 +520,9 @@ export const mediaStreamRoutes: FastifyPluginAsync = async (fastify) => {
         } finally {
           timingSnapshotInterval && clearInterval(timingSnapshotInterval);
           eventLoopLag.disable();
+          if ((socket as any).readyState === 1) {
+            socket.close();
+          }
           unregisterActiveCall(activeSessionId);
         }
       };

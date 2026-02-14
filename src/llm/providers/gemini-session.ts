@@ -80,30 +80,31 @@ export class GeminiTwilioRealtimeSession extends EventEmitter {
     await new Promise<void>((resolve, reject) => {
       const socket = new WebSocket(url);
       this.geminiWebSocket = socket;
-      let resolved = false;
+      let settled = false;
 
       const setupTimeout = setTimeout(() => {
-        if (!resolved) {
+        if (!settled) {
+          settled = true;
           reject(new Error("Timed out waiting for Gemini setupComplete."));
         }
       }, 10000);
 
       const onResolve = (): void => {
-        if (resolved) {
+        if (settled) {
           return;
         }
-        resolved = true;
+        settled = true;
         clearTimeout(setupTimeout);
         resolve();
       };
 
       const onReject = (error: unknown): void => {
-        if (resolved) {
+        if (settled) {
           return;
         }
-        resolved = true;
+        settled = true;
         clearTimeout(setupTimeout);
-        reject(error);
+        reject(error instanceof Error ? error : new Error(String(error)));
       };
 
       socket.on("open", () => {
@@ -136,6 +137,16 @@ export class GeminiTwilioRealtimeSession extends EventEmitter {
           return;
         }
 
+        if (parsed.error) {
+          const message =
+            parsed.error?.message ??
+            parsed.error?.status ??
+            "Gemini returned an error event";
+          onReject(new Error(String(message)));
+          this.emit("error", parsed.error);
+          return;
+        }
+
         this.handleGeminiEvent(parsed);
         if (parsed.setupComplete && !this.setupComplete) {
           this.setupComplete = true;
@@ -148,8 +159,16 @@ export class GeminiTwilioRealtimeSession extends EventEmitter {
         onReject(error);
       });
 
-      socket.on("close", () => {
+      socket.on("close", (code, reasonBuffer) => {
         this.connected = false;
+        if (!this.setupComplete) {
+          const reason = reasonBuffer.toString("utf8");
+          onReject(
+            new Error(
+              `Gemini websocket closed before setupComplete (code=${code}, reason=${reason || "n/a"})`,
+            ),
+          );
+        }
         if (!this.closed) {
           this.closed = true;
           this.emit("closed");
@@ -332,7 +351,10 @@ export class GeminiTwilioRealtimeSession extends EventEmitter {
   }
 
   private sendGeminiEvent(payload: object): void {
-    if (!this.geminiWebSocket || this.geminiWebSocket.readyState !== WebSocket.OPEN) {
+    if (
+      !this.geminiWebSocket ||
+      this.geminiWebSocket.readyState !== WebSocket.OPEN
+    ) {
       return;
     }
     this.geminiWebSocket.send(JSON.stringify(payload));
