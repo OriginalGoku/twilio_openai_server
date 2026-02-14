@@ -1,11 +1,9 @@
 import type { FastifyPluginAsync } from "fastify";
 import type { WebSocket } from "@fastify/websocket";
 import { monitorEventLoopDelay } from "node:perf_hooks";
-import { RealtimeSession } from "@openai/agents/realtime";
-import { TwilioRealtimeTransportLayer } from "@openai/agents-extensions";
 
-import { createAgent } from "../agents/factory.js";
 import { config } from "../config/env.js";
+import { createRealtimeBridge } from "../llm/realtime-provider.js";
 import { TranscriptCollector } from "../transcription/collector.js";
 import { processPostCall } from "../transcription/post-call.js";
 import {
@@ -36,7 +34,6 @@ export const mediaStreamRoutes: FastifyPluginAsync = async (fastify) => {
       registerActiveCall(activeSessionId);
 
       const transcriptCollector = new TranscriptCollector();
-      const agent = createAgent();
       let callSid = "unknown";
       let streamSid = "unknown";
       let isFinalized = false;
@@ -183,9 +180,30 @@ export const mediaStreamRoutes: FastifyPluginAsync = async (fastify) => {
         "Incoming Twilio media-stream websocket",
       );
 
-      const transport = new TwilioRealtimeTransportLayer({
-        twilioWebSocket: socket,
-      } as any);
+      let bridge: ReturnType<typeof createRealtimeBridge>;
+      try {
+        bridge = createRealtimeBridge(socket);
+      } catch (error) {
+        logger.error(
+          { callbackId, activeSessionId, error },
+          "Failed to initialize realtime provider bridge",
+        );
+        unregisterActiveCall(activeSessionId);
+        socket.close();
+        return;
+      }
+
+      logger.info(
+        {
+          callbackId,
+          activeSessionId,
+          realtimeProvider: bridge.provider,
+          realtimeModel: bridge.model,
+        },
+        "Initialized realtime provider bridge",
+      );
+
+      const transport = bridge.transport;
       const originalOnAudio = (transport as any)._onAudio?.bind(transport);
       if (typeof originalOnAudio === "function") {
         (transport as any)._onAudio = (audioEvent: any): void => {
@@ -277,9 +295,7 @@ export const mediaStreamRoutes: FastifyPluginAsync = async (fastify) => {
         originalSocketSend(data, ...args);
       };
 
-      const session = new RealtimeSession(agent, {
-        transport,
-      } as any);
+      const session = bridge.session;
 
       const sendInitialGreetingIfReady = (): void => {
         if (!sessionConnected || !streamStarted || greetingSent) {
@@ -506,15 +522,7 @@ export const mediaStreamRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       try {
-        await session.connect({
-          apiKey: config.OPENAI_API_KEY,
-          model: config.OPENAI_REALTIME_MODEL,
-          config: {
-            input_audio_transcription: {
-              model: "gpt-4o-mini-transcribe",
-            },
-          },
-        } as any);
+        await bridge.connect();
         sessionConnected = true;
         sessionConnectedAtMs = Date.now();
         logger.info(

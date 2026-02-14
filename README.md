@@ -108,13 +108,20 @@ Create `.env` from `.env.example`.
 Required for core flow:
 - `BASE_URL` (your public HTTPS URL, typically ngrok in local dev)
 - `OPENAI_API_KEY`
-- `OPENAI_REALTIME_MODEL` (default `gpt-realtime`)
-- `OPENAI_VOICE` (default `marin`)
 - `TWILIO_ACCOUNT_SID`
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_PHONE_NUMBER`
 
+Realtime provider/model selection:
+- Configure active provider + model in `src/config/llm.ts`.
+- Current implementation is wired for OpenAI transport/session; Gemini, ElevenLabs, and Amazon Nova Sonic entries are scaffolded for adapter implementation.
+
 Optional/tool-specific:
+- `GEMINI_API_KEY`
+- `ELEVENLABS_API_KEY`
+- `AWS_REGION`
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
 - `ENABLE_CALENDAR_TOOLS` (`true|false`)
 - `ENABLE_EMAIL_TOOLS` (`true|false`)
 - `GOOGLE_CLIENT_EMAIL`
