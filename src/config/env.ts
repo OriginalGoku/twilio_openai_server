@@ -19,12 +19,14 @@ const envSchema = z
     GOOGLE_CALENDAR_ID: z.string().optional(),
     GOOGLE_IMPERSONATED_USER: z.string().email().optional(),
     CALL_TIME_LIMIT: z.string().default("300"),
+    VERBOSE: z.string().default("true"),
+    TIMING_LOG: z.string().default("false"),
     SYSTEM_PROMPT: z.string().optional(),
     BUSINESS_TIMEZONE: z.string().default("UTC"),
     WORKDAY_START_HOUR: z.string().default("9"),
     WORKDAY_END_HOUR: z.string().default("20"),
     ENABLE_CALENDAR_TOOLS: z.string().default("true"),
-    ENABLE_EMAIL_TOOLS: z.string().default("false")
+    ENABLE_EMAIL_TOOLS: z.string().default("false"),
   })
   .transform((raw) => ({
     ...raw,
@@ -34,15 +36,17 @@ const envSchema = z
     GOOGLE_PRIVATE_KEY: raw.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
     WORKDAY_START_HOUR: Number(raw.WORKDAY_START_HOUR),
     WORKDAY_END_HOUR: Number(raw.WORKDAY_END_HOUR),
+    VERBOSE: raw.VERBOSE.toLowerCase() === "true",
+    TIMING_LOG: raw.TIMING_LOG.toLowerCase() === "true",
     ENABLE_CALENDAR_TOOLS: raw.ENABLE_CALENDAR_TOOLS.toLowerCase() === "true",
-    ENABLE_EMAIL_TOOLS: raw.ENABLE_EMAIL_TOOLS.toLowerCase() === "true"
+    ENABLE_EMAIL_TOOLS: raw.ENABLE_EMAIL_TOOLS.toLowerCase() === "true",
   }))
   .superRefine((data, ctx) => {
     if (Number.isNaN(data.PORT) || data.PORT < 1 || data.PORT > 65535) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["PORT"],
-        message: "PORT must be a valid port number"
+        message: "PORT must be a valid port number",
       });
     }
 
@@ -50,7 +54,7 @@ const envSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["CALL_TIME_LIMIT"],
-        message: "CALL_TIME_LIMIT must be a positive integer"
+        message: "CALL_TIME_LIMIT must be a positive integer",
       });
     }
 
@@ -59,7 +63,8 @@ const envSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["GOOGLE_CLIENT_EMAIL"],
-          message: "GOOGLE_CLIENT_EMAIL is required when Google tools are enabled"
+          message:
+            "GOOGLE_CLIENT_EMAIL is required when Google tools are enabled",
         });
       }
 
@@ -67,7 +72,8 @@ const envSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["GOOGLE_PRIVATE_KEY"],
-          message: "GOOGLE_PRIVATE_KEY is required when Google tools are enabled"
+          message:
+            "GOOGLE_PRIVATE_KEY is required when Google tools are enabled",
         });
       }
     }
@@ -76,7 +82,8 @@ const envSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["GOOGLE_CALENDAR_ID"],
-        message: "GOOGLE_CALENDAR_ID is required when calendar tools are enabled"
+        message:
+          "GOOGLE_CALENDAR_ID is required when calendar tools are enabled",
       });
     }
   });

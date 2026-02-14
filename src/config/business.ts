@@ -6,7 +6,7 @@ export interface BusinessConfig {
   assistantName?: string;
 }
 
-// Update this file with your actual business details.
+// This should be used to update information for each buisness
 export const businessConfig: BusinessConfig = {
   businessName: "Fitness Accounting",
   businessType: "Accounting and Bookkeeping for Fitness industry",

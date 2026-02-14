@@ -3,9 +3,11 @@ import pino from "pino";
 import { config } from "../config/env.js";
 
 const isProduction = config.NODE_ENV === "production";
+const defaultLevel = isProduction ? "info" : "debug";
+const logLevel = config.VERBOSE ? defaultLevel : "warn";
 
 export const loggerOptions = {
-  level: isProduction ? "info" : "debug",
+  level: logLevel,
   base: {
     service: "caller-engine",
     env: config.NODE_ENV,

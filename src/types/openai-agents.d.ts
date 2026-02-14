@@ -24,5 +24,6 @@ declare module "@openai/agents/realtime" {
 declare module "@openai/agents-extensions" {
   export class TwilioRealtimeTransportLayer {
     constructor(options: any);
+    sendEvent(event: any): void;
   }
 }
