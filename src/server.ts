@@ -1,3 +1,10 @@
+// curl -X POST "https://0a4f-2607-fea8-3f9d-5200-403-fc3d-4f36-a58a.ngrok-free.app/call/initiate" \
+//   -H "Content-Type: application/json" \
+//   -d '{
+//     "callbackId": "e2e-test-001",
+//     "to": "+13653246525",
+//     "record": false
+//   }'
 import formbody from "@fastify/formbody";
 import websocket from "@fastify/websocket";
 import Fastify from "fastify";
